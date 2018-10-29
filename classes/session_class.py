@@ -22,7 +22,6 @@ class Session:
         except IOError:
             self.topics = pd.DataFrame()
         try:
-            pdb.set_trace()
             self.authorList = pd.read_csv(self.sess_folder + '/authors.csv',encoding='utf-8',index_col='index')
         except IOError:
             self.authorList = pd.DataFrame()
@@ -43,6 +42,25 @@ class Session:
     def returnDoc(self,doc):
         return self.documents.loc[doc]
     
+    def returnDocsBy(self, type):
+        docs_by_array = []
+        if type == 'author':
+            if isinstance(self.authorList.index,list):
+                for each_author in self.authorList.index:
+                    element = {
+                    'author':each_author,
+                    'Paper_Ids': self.authorList.loc[each_author]['Paper_Ids']   
+                    }
+                    docs_by_array.append(element)
+            else: #Only one paper
+                element = {
+                'author':self.authorList.index,
+                'Paper_Ids': self.authorList.loc[self.authorList.index]['Paper_Ids']   
+                }
+                docs_by_array.append(element)
+        return docs_by_array
+
+    
     def docInSess(self,doc):
         try:
             is_doc_in_sess = self.documents['globalID'].isin([doc]).any()
@@ -54,17 +72,24 @@ class Session:
         for topic in doc.topics:
             self.topics.append(topic)
              
-    def addAuthor(self, author):
-        # print author
-        # pdb.set_trace()
+    def addAuthor(self, author,doc_id):
+        """Function to add author to session authorList"""
         try:
             papers_in_collection = author['Papers_in_collection']
             self.authorList.loc[author.Author, 'Papers_in_collection'] = papers_in_collection + 1
+            pdb.set_trace()
+            paper_id_array = []
+            paper_id_array.append(self.authorList.loc[author.Author, 'Papers_Ids'])
+            paper_id_array.append(doc_id)
+            self.authorList.loc[author.Author, 'Papers_Ids'] = paper_id_array.append(doc_id)
+
         except KeyError:
             author['Papers_in_collection'] = 1
+            author['Paper_Ids'] = [doc_id]
             self.authorList = self.authorList.append(author)
     
     def searchAuthor(self, author):
+        """Function to search for an author in the session returns True if in Session and False if not"""
         # pdb.set_trace()
         try:
             self.authorList.loc[author]
@@ -106,15 +131,23 @@ class Session:
         ldamodel.save('20top_100Tok.gensim')
 
         return ldamodel
+    
+    def get_topics_by(self,data,organized_by):
+        """Calculates the topics of the session organized by authors or years"""
+        if organized_by == 'author':
+            df = pd.DataFrame()
+            #Get papers for each author
+            # pdb.set_trace()
+            for each_author in data:
+                for each_paper in each_author['Paper_Ids']:
+                    # pdb.set_trace()
+                    df = df.append(self.returnDoc(each_paper))
+        return self.get_topics(df)
 
-    def get_topics(self, doc_dictionary):
-        # data_columns = ['title','year','author','text','tokens','lemma','citations','abstract','conclusion','sents']
-        data_columns = ['title','year','author','text','globalID']
-        # self.documents_df = pd.DataFrame(doc_dictionary, columns=data_columns)
-        # self.documents = self.documents[self.documents['text'] != 'Parsing Error']
-        # pdb.set_trace()
-        self.documents.to_csv(self.sess_folder + '/documents.csv',header=True,encoding='utf-8',index_label='index')
-        
+
+    def get_topics(self,doc_dictionary):
+        """Returns Topics object and Words Object from documents df passed"""
+        doc_dictionary.to_csv(self.sess_folder + '/temp_sess_topics.csv',header=True,encoding='utf-8',index_label='index')
         #Get Topics NSA function
         wd = os.getcwd()
         os.chdir("../brain/.")
@@ -122,7 +155,7 @@ class Session:
         execfile(activate_this_file, dict(__file__=activate_this_file))
         python_bin="./vizlit/bin/python"
         script_file="topic_extractor.py"
-        subprocess.call([python_bin,script_file])
+        subprocess.call([python_bin,script_file,'session','../sageBrain/sessData/sess1/documents.csv'])
         os.chdir(wd)
         self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8').dropna()
         self.words = pd.read_csv(self.sess_folder + '/words.csv',encoding='utf-8')

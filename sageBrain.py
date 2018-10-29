@@ -70,7 +70,6 @@ class SageBrain(object):
 
     def DocInterface(self, fileName, doc_id,dataType,metadata):
         """ Brain Interface """
-        documents_msg = []
         if dataType == 'zoteroCollection':
             for index,each_doc in enumerate(metadata):
                 doc_in_sess = self.actualSession.docInSess(metadata[index]['key'])
@@ -81,23 +80,26 @@ class SageBrain(object):
                     print "doc in sess"
                     doc_from_sess = self.actualSession.returnDoc(metadata[index]['key'])
                     doc = Document(self.actualSession, metadata[index]['name'],  metadata[index]['key'], 'inSession', "user", doc_from_sess)
-                # msg = doc.create_document_msg()
-                # documents_msg.append(msg)
         else:
             doc = Document(self.actualSession, fileName, doc_id, "doc", "user", False)
             self.actualSession.addDoc(doc)
-            # documents_msg = doc.create_document_msg()
+
+        #Store the Session Documents in CSV file
+        self.actualSession.documents.to_csv(self.sess_folder + '/documents.csv',header=True,encoding='utf-8',index_label='index')
+        #Get authors test
+        test = self.actualSession.returnDocsBy('author')
+        test2 = self.actualSession.get_topics_by(test,'author')
+        pdb.set_trace()
+
 
         #We get the topic and words Using Umap NSA algorithm and we include them into session
-        self.actualSession.get_topics(documents_msg)
+        self.actualSession.get_topics(self.actualSession.documents)
         #We get the years
         years = self.actualSession.get_years()
         #We store the authors in session
-        pdb.set_trace()
+        # pdb.set_trace()
         self.actualSession.authorList.to_csv(self.sess_folder + '/authors.csv',header=True,encoding='utf-8',index='Author',index_label='index')
-        # return {"documents":documents_msg,"topics":self.actualSession.topics.to_json(),"words":self.actualSession.words.to_json()}
         return {"documents":self.actualSession.documents.to_json(),"years":years.to_json(),"authors":self.actualSession.authorList.to_json(),"doc_topics":{'topics':self.actualSession.topics.to_json(), 'order':json.dumps(self.actualSession.topics.columns.values.tolist())}}
-        # return {"documents":documents_msg}
     
     def addCitations(self):
         documents_msg = []

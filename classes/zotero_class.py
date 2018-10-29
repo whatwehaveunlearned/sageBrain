@@ -32,7 +32,8 @@ class Zotero(object):
         #We need to do the following merging in order to centralize all in one table.
         #Merge both into a single table
         pdfs = pdfs[['key','parentItem','contentType', 'charset', 'filename', 'md5', 'mtime', 'tags', 'relations','note','linkMode']]
-        no_pdfs = no_pdfs[['key', 'version', 'parentItem', 'itemType', 'title', 'accessDate', 'url', 'note', 'tags', 'relations', 'dateAdded', 'dateModified','creators','date','publicationTitle']]
+        #Removed some keys to avoid errors: 1 something (dont remember what key),  2 'publicationTitle'
+        no_pdfs = no_pdfs[['key', 'version', 'parentItem', 'itemType', 'title', 'accessDate', 'url', 'note', 'tags', 'relations', 'dateAdded', 'dateModified','creators','date']]
         items = pd.merge(pdfs,no_pdfs,left_on='parentItem',right_on='key',how='outer')
         #We rename the columns to show which is pdf file and wich is main key
         items = items.rename(columns={'key_x': 'pdf_file','title': 'name','key_y': 'key'})

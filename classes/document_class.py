@@ -15,11 +15,16 @@ from dateutil.parser import parse as dateParser
 #GoogleScholar
 import scholar
 
+#Functions from NSA Are called from shell because they run in Python3
+import subprocess
+import os
+
 #Document Class
 class Document:
     """ Document Class """
     def __init__(self, session, name, doc_id, doc_type, doc_user, metadata):
         self.session = session
+        self.topics = False
         self.folder = self.session.sess_folder
         self.metadata = metadata
         print metadata['pdf_file']
@@ -33,6 +38,8 @@ class Document:
                 print 'Parsing Error'
                 self.text = 'Parsing Error'
             self.parseMetadata()
+            if self.text != 'Parsing Error':
+                self.topics = self.get_topics()
         elif doc_type == 'inSession':
             # pdb.set_trace()
             self.parseFromSession()
@@ -50,6 +57,25 @@ class Document:
                 self.sections = False
 
     #Implement Function to Loop accross all clusterIDs.
+
+    def get_topics(self):
+        """Function to calculate the topics from a document, returns the topics in order of importance and the words"""
+        doc_dictionary = self.create_document_msg()
+        #Create a csv file with the text to read by topic_extractor
+        pd.DataFrame.from_dict(doc_dictionary).to_csv(self.session.sess_folder + '/temp_text_for_individual_doc_topics.csv',header=True,encoding='utf-8',index_label='index')
+        
+        #Get Topics NSA function
+        wd = os.getcwd()
+        os.chdir("../brain/.")
+        activate_this_file = "./vizlit/bin/activate_this.py"
+        execfile(activate_this_file, dict(__file__=activate_this_file))
+        python_bin="./vizlit/bin/python"
+        script_file="topic_extractor.py"
+        subprocess.call([python_bin,script_file,'document','../sageBrain/sessData/sess1/temp_text_for_individual_doc_topics.csv'])
+        os.chdir(wd)
+        self.topics = pd.read_csv(self.session.sess_folder + '/temp_topics_for_individual_doc.csv',encoding='utf-8').dropna()
+        self.words = pd.read_csv(self.session.sess_folder + '/temp_words_for_individual_doc.csv',encoding='utf-8')
+        return {'topics':self.topics,'words':self.words}
 
     #Parse from Session
     def parseFromSession(self):
@@ -69,17 +95,15 @@ class Document:
         self.type = self.metadata.type
         self.globalID = self.metadata.globalID
         self.scholarID = False
-        self.conference = self.metadata.conference
+        # self.conference = self.metadata.conference
         self.organization = self.metadata.organization
         self.pages = self.metadata.pages
         self.text = self.metadata.text
         self.citationArticles = self.metadata.citationArticles
-        pdb.set_trace()
         parsed_authors = pd.read_json(self.metadata.author)
-        # parsed_authors.index = parsed_authors['Author']
         self.authors = parsed_authors
-        # for index, row in parsed_authors.iterrows():
-        #     self.authors.append(row)
+        pdb.set_trace()
+        self.topics =  pd.read_json(self.metadata.topics)
         
 
     def GetScholarInfo(self):
@@ -154,7 +178,7 @@ class Document:
         self.type = self.metadata["itemType"]
         self.globalID = self.metadata['key']
         self.scholarID = False
-        self.conference = self.metadata["publicationTitle"]
+        # self.conference = self.metadata["publicationTitle"]
         self.organization = False
         self.pages = False
         self.citationArticles = False
@@ -168,9 +192,10 @@ class Document:
                 author_data = scholar.fast_get_author_data(author)
                 # Need to change arrays to strings to save as PD
                 author_data['Interests'] = str(author_data['Interests'])
+                author_data['Paper_Ids'] = [self.globalID] 
                 author_data_df = pd.DataFrame.from_records(author_data,index=[author_data['Author']])
                 self.authors = self.authors.append(author_data_df)
-                self.session.addAuthor(author_data_df)
+                self.session.addAuthor(author_data_df,self.globalID)
             else:
                 print "Author was in Session"
                 #Get the author from session
@@ -178,10 +203,8 @@ class Document:
                 #Append to the document
                 self.authors.append(author_frame)
                 #Append to the session
-                self.session.addAuthor(author_frame)
-        ##parse to json the authors
-        # pdb.set_trace()
-        # self.authors = self.authors.to_json()
+                self.session.addAuthor(author_frame,self.globalID)
+
     def authors_to_json(self):
         author_array = []
         for each in self.authors:
@@ -313,9 +336,10 @@ class Document:
         return txtAnalysis
 
     def create_document_msg(self):
-        doc_topics = []
         #transform author dataframe into json to searialize
-        # authors_array_jsons = self.authors_to_json()
+        if self.topics != False:
+            pdb.set_trace()
+            self.topics = self.topics['topics'].to_json()
         msg = {
             'user':'self.user',
             'text': self.text,
@@ -334,9 +358,10 @@ class Document:
             'abstract':self.abstract,
             'type':self.type,
             'globalID':self.globalID,
-            'conference':self.conference,
+            # 'conference':self.conference,
             'organization': self.organization,
             'pages':self.pages,
-            'citationArticles': self.citationArticles
+            'citationArticles': self.citationArticles,
+            'topics':self.topics
         }
         return msg
