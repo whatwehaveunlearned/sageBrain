@@ -45,7 +45,7 @@ from classes.document_class import Document
 from classes.topic_class import Topic #Not using this now
 from classes.zotero_class import Zotero
 
-#Interaface Class to talk with Node
+#Interface Class to talk with Node
 class SageBrain(object):
     """ Sage Brain Class"""
     def __init__(self, session_id):
@@ -78,8 +78,9 @@ class SageBrain(object):
                     self.actualSession.addDoc(doc)
                 else:
                     print "doc in sess"
-                    doc_from_sess = self.actualSession.returnDoc(metadata[index]['key'])
-                    doc = Document(self.actualSession, metadata[index]['name'],  metadata[index]['key'], 'inSession', "user", doc_from_sess)
+                    # pdb.set_trace()
+                    # doc_from_sess = self.actualSession.returnDoc(metadata[index]['key'])
+                    # doc = Document(self.actualSession, metadata[index]['name'],  metadata[index]['key'], 'inSession', "user", doc_from_sess)
         else:
             doc = Document(self.actualSession, fileName, doc_id, "doc", "user", False)
             self.actualSession.addDoc(doc)
@@ -87,19 +88,20 @@ class SageBrain(object):
         #Store the Session Documents in CSV file
         self.actualSession.documents.to_csv(self.sess_folder + '/documents.csv',header=True,encoding='utf-8',index_label='index')
         #Get authors test
-        test = self.actualSession.returnDocsBy('author')
-        test2 = self.actualSession.get_topics_by(test,'author')
-        pdb.set_trace()
+        # test = self.actualSession.returnDocsBy('author')
+        #test2 = self.actualSession.get_topics_by(test,'author')
 
 
         #We get the topic and words Using Umap NSA algorithm and we include them into session
         self.actualSession.get_topics(self.actualSession.documents)
+        # self.actualSession.compare_topics()
         #We get the years
         years = self.actualSession.get_years()
         #We store the authors in session
         # pdb.set_trace()
         self.actualSession.authorList.to_csv(self.sess_folder + '/authors.csv',header=True,encoding='utf-8',index='Author',index_label='index')
-        return {"documents":self.actualSession.documents.to_json(),"years":years.to_json(),"authors":self.actualSession.authorList.to_json(),"doc_topics":{'topics':self.actualSession.topics.to_json(), 'order':json.dumps(self.actualSession.topics.columns.values.tolist())}}
+        return {"documents":self.actualSession.documents.to_json(),"years":years.to_json(),"authors":self.actualSession.authorList.to_json(orient='records'),"doc_topics":{'topics':self.actualSession.topics.to_json(), 'order':json.dumps(self.actualSession.topics.columns.values.tolist()), 'words':json.dumps(self.actualSession.words.to_json(orient='records'))}}
+        # return {"documents":self.actualSession.documents.to_json(),"years":years.to_json(),"authors":"self.actualSession.authorList.to_json()","doc_topics":{'topics':self.actualSession.topics.to_json(), 'order':json.dumps(self.actualSession.topics.columns.values.tolist()), 'words':json.dumps(self.actualSession.words.to_json())}}
     
     def addCitations(self):
         documents_msg = []

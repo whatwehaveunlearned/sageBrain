@@ -23,8 +23,31 @@ import os
 class Document:
     """ Document Class """
     def __init__(self, session, name, doc_id, doc_type, doc_user, metadata):
+        #Initialize doc parameters
+        self.title = False
+        self.pdf_file = False
+        self.parent_item = False
+        self.tags = False
+        self.url = False
+        self.year = False
+        self.citations = False
+        self.versions = False
+        self.clusterID = False
+        self.citations_list = False
+        self.notes = False
+        self.abstract = False
+        self.type = False
+        self.globalID = False
+        self.scholarID = False
+        self.conference = False
+        self.organization = False
+        self.pages = False
+        self.text = False
+        self.citationArticles = False
+        self.authors = False
+        self.topics =  False
+        self.words = False
         self.session = session
-        self.topics = False
         self.folder = self.session.sess_folder
         self.metadata = metadata
         print metadata['pdf_file']
@@ -34,12 +57,14 @@ class Document:
                 self.text = 'No File'
             try:
                 self.text = unicode(self.get_text(metadata['pdf_file'] + '.pdf',self.folder), "utf-8")
+                # self.parseMetadata()
+                # self.topics = self.get_topics()
             except TypeError:
                 print 'Parsing Error'
                 self.text = 'Parsing Error'
+                self.topics = 'Parsing Error'
+            #I have to see what will happen when I do not parse the data I think next line will fail because no topics and text
             self.parseMetadata()
-            if self.text != 'Parsing Error':
-                self.topics = self.get_topics()
         elif doc_type == 'inSession':
             # pdb.set_trace()
             self.parseFromSession()
@@ -102,8 +127,12 @@ class Document:
         self.citationArticles = self.metadata.citationArticles
         parsed_authors = pd.read_json(self.metadata.author)
         self.authors = parsed_authors
-        pdb.set_trace()
-        self.topics =  pd.read_json(self.metadata.topics)
+        if (isinstance(self.metadata.topics, pd.DataFrame)):
+            self.topics =  pd.read_json(self.metadata.topics)
+            self.words = pd.read_json(self.metadata.words)
+        else:
+            self.topics = False
+            self.words = False
         
 
     def GetScholarInfo(self):
@@ -202,13 +231,13 @@ class Document:
                 author_frame = self.session.returnAuthor(eachAuthor)
                 #Append to the document
                 self.authors.append(author_frame)
-                #Append to the session
-                self.session.addAuthor(author_frame,self.globalID)
+                #Append to the session No need they are in session already!
+                # self.session.addAuthor(author_frame,self.globalID)
 
     def authors_to_json(self):
         author_array = []
         for each in self.authors:
-            pdb.set_trace()
+            # pdb.set_trace()
             author_array.append(each.to_json())
         return author_array
 
@@ -337,9 +366,17 @@ class Document:
 
     def create_document_msg(self):
         #transform author dataframe into json to searialize
-        if self.topics != False:
-            pdb.set_trace()
-            self.topics = self.topics['topics'].to_json()
+        # pdb.set_trace()
+        if (self.topics != False) and (self.topics != 'Parsing Error'):
+            topics = self.topics['topics'].to_json()
+            words = self.topics['words'].to_json()
+        else:
+            topics = False
+            words = False
+        if (isinstance(self.authors, pd.DataFrame)):
+            authors = self.authors.to_json()
+        else:
+            authors = False
         msg = {
             'user':'self.user',
             'text': self.text,
@@ -354,7 +391,7 @@ class Document:
             'clusterID': self.clusterID,
             'citationsList':self.citations_list,
             'notes': self.notes,
-            'author': self.authors.to_json(),
+            'author': authors,
             'abstract':self.abstract,
             'type':self.type,
             'globalID':self.globalID,
@@ -362,6 +399,7 @@ class Document:
             'organization': self.organization,
             'pages':self.pages,
             'citationArticles': self.citationArticles,
-            'topics':self.topics
+            'topics':topics,
+            'words':words
         }
         return msg

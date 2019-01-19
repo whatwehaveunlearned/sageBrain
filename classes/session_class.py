@@ -12,13 +12,17 @@ class Session:
     def __init__(self, session_id):
         self.id = session_id
         self.sess_folder = './sessData/' + session_id
+        self.documents = False
+        self.topics = False
+        self.authorList = False
+        self.words = False
         #We initialize fixed now with this session in future will pass sess_folder as a parameter.
         try:
             self.documents = pd.read_csv(self.sess_folder + '/documents.csv',encoding='utf-8',index_col='index')
         except IOError:
             self.documents = pd.DataFrame()
         try:
-            self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8')
+            self.topics = pd.read_csv(self.sess_folder + '/topicss.csv',encoding='utf-8')
         except IOError:
             self.topics = pd.DataFrame()
         try:
@@ -26,12 +30,9 @@ class Session:
         except IOError:
             self.authorList = pd.DataFrame()
         try:
-            self.words = pd.read_csv(self.sess_folder + '/words.csv',encoding='utf-8')
+            self.words = pd.read_csv(self.sess_folder + '/wordss.csv',encoding='utf-8')
         except IOError:
             self.words = pd.DataFrame()
-        self.documents_df = []
-        self.lda = False
-        self.textAnalysis = []
 
     def addDoc(self, doc):
         """ Function to add a new document to the session """
@@ -40,9 +41,11 @@ class Session:
         self.documents = self.documents.append(document)
     
     def returnDoc(self,doc):
+        """Returns a specific document from a session"""
         return self.documents.loc[doc]
     
     def returnDocsBy(self, type):
+        """Returns the documents of session ordered by type passed (authors and years) """
         docs_by_array = []
         if type == 'author':
             if isinstance(self.authorList.index,list):
@@ -62,6 +65,7 @@ class Session:
 
     
     def docInSess(self,doc):
+        """Aux function to show if a document is already in a session"""
         try:
             is_doc_in_sess = self.documents['globalID'].isin([doc]).any()
         except KeyError:
@@ -77,11 +81,10 @@ class Session:
         try:
             papers_in_collection = author['Papers_in_collection']
             self.authorList.loc[author.Author, 'Papers_in_collection'] = papers_in_collection + 1
-            pdb.set_trace()
             paper_id_array = []
-            paper_id_array.append(self.authorList.loc[author.Author, 'Papers_Ids'])
+            paper_id_array.append(self.authorList.loc[author.Author, 'Paper_Ids'])
             paper_id_array.append(doc_id)
-            self.authorList.loc[author.Author, 'Papers_Ids'] = paper_id_array.append(doc_id)
+            self.authorList.loc[author.Author, 'Paper_Ids'] = paper_id_array.append(doc_id)
 
         except KeyError:
             author['Papers_in_collection'] = 1
@@ -89,7 +92,7 @@ class Session:
             self.authorList = self.authorList.append(author)
     
     def searchAuthor(self, author):
-        """Function to search for an author in the session returns True if in Session and False if not"""
+        """ Aux Function to search for an author in the session returns True if in Session and False if not"""
         # pdb.set_trace()
         try:
             self.authorList.loc[author]
@@ -145,7 +148,7 @@ class Session:
         return self.get_topics(df)
 
 
-    def get_topics(self,doc_dictionary):
+    def get_topics(self,doc_dictionary): #Good One
         """Returns Topics object and Words Object from documents df passed"""
         doc_dictionary.to_csv(self.sess_folder + '/temp_sess_topics.csv',header=True,encoding='utf-8',index_label='index')
         #Get Topics NSA function
@@ -157,7 +160,7 @@ class Session:
         script_file="topic_extractor.py"
         subprocess.call([python_bin,script_file,'session','../sageBrain/sessData/sess1/documents.csv'])
         os.chdir(wd)
-        self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8').dropna()
+        self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8').dropna() #It drops a lot it only leaves 4
         self.words = pd.read_csv(self.sess_folder + '/words.csv',encoding='utf-8')
         return {'topics':self.topics,'words':self.words}
     
@@ -195,3 +198,13 @@ class Session:
             tagged_documents.append(TaggedDocument(doc[parameter],["doc_{}".format(self.documents[i].title)]))
         d2v_model = gensim.models.doc2vec.Doc2Vec(tagged_documents,size=300)
         return d2v_model
+
+    def compare_topics(self):
+        """Function to assign session topics to doc topics"""
+        #Create pandas dataframe to hold similarity of topics in sess and documents
+        topic_similarity = pd.DataFrame
+        for topic in self.topics:
+            if topic != 'pos': #lookout for pos colusmn that has no meaning
+                for each_document in self.documents.iterrows():
+                    pdb.set_trace()
+                    self.topics[topic].isin(pd.read_json(each_document['words'])['word']).sum()
