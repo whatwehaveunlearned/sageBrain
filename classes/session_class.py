@@ -132,7 +132,6 @@ class Session:
         ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=9, id2word = dictionary, passes=100)
         #Store to visualize
         ldamodel.save('20top_100Tok.gensim')
-
         return ldamodel
     
     def get_topics_by(self,data,organized_by):
@@ -160,7 +159,7 @@ class Session:
         script_file="topic_extractor.py"
         subprocess.call([python_bin,script_file,'session','../sageBrain/sessData/sess1/documents.csv'])
         os.chdir(wd)
-        self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8').dropna() #It drops a lot it only leaves 4
+        self.topics = pd.read_csv(self.sess_folder + '/topics.csv',encoding='utf-8')
         self.words = pd.read_csv(self.sess_folder + '/words.csv',encoding='utf-8')
         return {'topics':self.topics,'words':self.words}
     
